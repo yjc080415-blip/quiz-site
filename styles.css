@@ -29,6 +29,7 @@ body {
 }
 
 button,
+input,
 select {
   font: inherit;
 }
@@ -89,7 +90,8 @@ h2 {
   font-size: 13px;
 }
 
-.controls select {
+.controls select,
+.controls input {
   width: 100%;
   min-height: 44px;
   padding: 0 12px;
@@ -97,6 +99,17 @@ h2 {
   border-radius: 14px;
   background: #fff;
   color: var(--text);
+}
+
+.jump-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.jump-row button {
+  min-width: 70px;
+  padding: 0 12px;
 }
 
 .switch-row {
@@ -132,6 +145,102 @@ h2 {
 .stat span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.overview {
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.overview-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 4px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  text-align: left;
+}
+
+.overview-count,
+.overview-summary,
+.legend {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 8px 2px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.correct-dot {
+  background: var(--success);
+}
+
+.wrong-dot {
+  background: var(--danger);
+}
+
+.unanswered-dot {
+  background: #a8b2c1;
+}
+
+.overview-summary {
+  margin: 0 2px 10px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 2px 2px 4px;
+}
+
+.overview-item {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.overview-item.correct {
+  border-color: rgba(18, 128, 92, 0.35);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.overview-item.wrong {
+  border-color: rgba(201, 54, 54, 0.35);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.overview-item.current {
+  outline: 3px solid rgba(36, 107, 254, 0.24);
+  border-color: var(--primary);
 }
 
 .quiz-card,

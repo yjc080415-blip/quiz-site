@@ -34,6 +34,13 @@
           <option value="unanswered">未做题目</option>
         </select>
       </label>
+      <label>
+        <span>跳到题号</span>
+        <div class="jump-row">
+          <input id="questionJump" type="number" min="1" inputmode="numeric" placeholder="题号">
+          <button id="jumpButton" class="secondary-button" type="button">跳转</button>
+        </div>
+      </label>
       <label class="switch-row">
         <input id="shuffleToggle" type="checkbox">
         <span>随机顺序</span>
@@ -52,6 +59,22 @@
       <div class="stat">
         <strong id="correctRate">0%</strong>
         <span>正确率</span>
+      </div>
+    </section>
+
+    <section class="panel overview" aria-label="题目概览">
+      <button id="overviewToggle" class="overview-toggle" type="button" aria-expanded="true">
+        <span>题目概览</span>
+        <span id="overviewCount" class="overview-count">0 题</span>
+      </button>
+      <div id="overviewBody">
+        <div class="legend" aria-label="题目状态说明">
+          <span><i class="dot correct-dot"></i>正确</span>
+          <span><i class="dot wrong-dot"></i>错误</span>
+          <span><i class="dot unanswered-dot"></i>未做</span>
+        </div>
+        <div id="overviewSummary" class="overview-summary"></div>
+        <div id="overviewGrid" class="overview-grid"></div>
       </div>
     </section>
 

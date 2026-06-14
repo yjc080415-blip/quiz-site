@@ -5,11 +5,18 @@ const els = {
   chapterFilter: document.querySelector("#chapterFilter"),
   typeFilter: document.querySelector("#typeFilter"),
   modeFilter: document.querySelector("#modeFilter"),
+  questionJump: document.querySelector("#questionJump"),
+  jumpButton: document.querySelector("#jumpButton"),
   shuffleToggle: document.querySelector("#shuffleToggle"),
   resetProgress: document.querySelector("#resetProgress"),
   totalCount: document.querySelector("#totalCount"),
   doneCount: document.querySelector("#doneCount"),
   correctRate: document.querySelector("#correctRate"),
+  overviewToggle: document.querySelector("#overviewToggle"),
+  overviewBody: document.querySelector("#overviewBody"),
+  overviewCount: document.querySelector("#overviewCount"),
+  overviewSummary: document.querySelector("#overviewSummary"),
+  overviewGrid: document.querySelector("#overviewGrid"),
   emptyState: document.querySelector("#emptyState"),
   quizCard: document.querySelector("#quizCard"),
   questionMeta: document.querySelector("#questionMeta"),
@@ -23,6 +30,22 @@ const els = {
   nextButton: document.querySelector("#nextButton"),
 };
 
+function defaultProgress() {
+  return {
+    answers: {},
+    favorites: {},
+    ui: {
+      chapter: "",
+      type: "",
+      mode: "all",
+      shuffle: false,
+      overviewOpen: true,
+      currentIndex: 0,
+      currentQuestionId: "",
+    },
+  };
+}
+
 const state = {
   filtered: [],
   currentIndex: 0,
@@ -32,15 +55,47 @@ const state = {
 };
 
 function loadProgress() {
+  const fallback = defaultProgress();
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { answers: {}, favorites: {} };
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    return {
+      ...fallback,
+      ...saved,
+      answers: saved.answers || {},
+      favorites: saved.favorites || {},
+      ui: { ...fallback.ui, ...(saved.ui || {}) },
+    };
   } catch {
-    return { answers: {}, favorites: {} };
+    return fallback;
   }
 }
 
 function saveProgress() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+}
+
+function saveUiState() {
+  const question = state.filtered[state.currentIndex];
+  state.progress.ui = {
+    chapter: els.chapterFilter.value,
+    type: els.typeFilter.value,
+    mode: els.modeFilter.value,
+    shuffle: els.shuffleToggle.checked,
+    overviewOpen: !els.overviewBody.classList.contains("hidden"),
+    currentIndex: state.currentIndex,
+    currentQuestionId: question?.id || "",
+  };
+  saveProgress();
+}
+
+function restoreUiState() {
+  const ui = state.progress.ui || {};
+  els.chapterFilter.value = ui.chapter || "";
+  els.typeFilter.value = ui.type || "";
+  els.modeFilter.value = ui.mode || "all";
+  els.shuffleToggle.checked = Boolean(ui.shuffle);
+  els.overviewBody.classList.toggle("hidden", ui.overviewOpen === false);
+  els.overviewToggle.setAttribute("aria-expanded", String(ui.overviewOpen !== false));
 }
 
 function normalizeChapter(chapter) {
@@ -97,9 +152,12 @@ function buildFilteredQuestions() {
   return els.shuffleToggle.checked ? shuffle(next) : next;
 }
 
-function applyFilters() {
+function applyFilters({ resetIndex = true } = {}) {
   state.filtered = buildFilteredQuestions();
-  state.currentIndex = 0;
+  const savedQuestionIndex = state.filtered.findIndex((question) => question.id === state.progress.ui.currentQuestionId);
+  const savedIndex = Math.min(state.progress.ui.currentIndex || 0, Math.max(state.filtered.length - 1, 0));
+  state.currentIndex = resetIndex ? 0 : savedQuestionIndex >= 0 ? savedQuestionIndex : savedIndex;
+  saveUiState();
   render();
 }
 
@@ -115,6 +173,7 @@ function renderStats() {
 
 function render() {
   renderStats();
+  renderOverview();
 
   if (!state.filtered.length) {
     els.quizCard.classList.add("hidden");
@@ -142,6 +201,52 @@ function render() {
   els.nextButton.disabled = state.currentIndex === state.filtered.length - 1;
   els.checkButton.textContent = state.checked ? "已提交" : "提交答案";
   els.checkButton.disabled = state.checked;
+  els.questionJump.max = state.filtered.length;
+  els.questionJump.value = state.currentIndex + 1;
+}
+
+function getQuestionStatus(question) {
+  return state.progress.answers[question.id]?.status || "unanswered";
+}
+
+function renderOverview() {
+  const counts = state.filtered.reduce(
+    (total, question) => {
+      total[getQuestionStatus(question)] += 1;
+      return total;
+    },
+    { correct: 0, wrong: 0, unanswered: 0 },
+  );
+
+  els.overviewCount.textContent = `${state.filtered.length} 题`;
+  els.overviewSummary.textContent = `正确 ${counts.correct} · 错误 ${counts.wrong} · 未做 ${counts.unanswered}`;
+  els.overviewGrid.innerHTML = "";
+
+  state.filtered.forEach((question, index) => {
+    const button = document.createElement("button");
+    const status = getQuestionStatus(question);
+    button.type = "button";
+    button.className = `overview-item ${status}`;
+    button.textContent = index + 1;
+    button.title = `第 ${index + 1} 题：${status === "correct" ? "正确" : status === "wrong" ? "错误" : "未做"}`;
+    button.setAttribute("aria-label", button.title);
+
+    if (index === state.currentIndex) {
+      button.classList.add("current");
+    }
+
+    button.addEventListener("click", () => jumpToIndex(index));
+    els.overviewGrid.appendChild(button);
+  });
+}
+
+function renderKeepingAnchor(anchor) {
+  const top = anchor?.getBoundingClientRect().top ?? 0;
+  render();
+  requestAnimationFrame(() => {
+    const nextTop = anchor?.getBoundingClientRect().top ?? top;
+    window.scrollBy({ top: nextTop - top, behavior: "auto" });
+  });
 }
 
 function renderOptions(question) {
@@ -215,11 +320,13 @@ function checkAnswer() {
   if (els.modeFilter.value !== "all") {
     state.filtered = buildFilteredQuestions();
     state.currentIndex = Math.min(state.currentIndex, Math.max(state.filtered.length - 1, 0));
-    render();
+    saveUiState();
+    renderKeepingAnchor(els.checkButton);
     return;
   }
 
-  render();
+  saveUiState();
+  renderKeepingAnchor(els.checkButton);
 }
 
 function renderResult(question) {
@@ -251,25 +358,55 @@ function toggleFavorite() {
 }
 
 function move(delta) {
-  state.currentIndex = Math.min(Math.max(state.currentIndex + delta, 0), state.filtered.length - 1);
+  jumpToIndex(state.currentIndex + delta);
+}
+
+function jumpToIndex(index) {
+  if (!state.filtered.length) return;
+
+  state.currentIndex = Math.min(Math.max(index, 0), state.filtered.length - 1);
+  saveUiState();
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  els.quizCard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function jumpToQuestion() {
+  const target = Number.parseInt(els.questionJump.value, 10);
+  if (!Number.isFinite(target) || target < 1 || target > state.filtered.length) {
+    els.questionJump.value = state.currentIndex + 1;
+    return;
+  }
+
+  jumpToIndex(target - 1);
 }
 
 fillFilters();
-applyFilters();
+restoreUiState();
+applyFilters({ resetIndex: false });
 
 [els.chapterFilter, els.typeFilter, els.modeFilter, els.shuffleToggle].forEach((input) => {
-  input.addEventListener("change", applyFilters);
+  input.addEventListener("change", () => applyFilters());
 });
 
 els.checkButton.addEventListener("click", checkAnswer);
 els.prevButton.addEventListener("click", () => move(-1));
 els.nextButton.addEventListener("click", () => move(1));
+els.overviewToggle.addEventListener("click", () => {
+  els.overviewBody.classList.toggle("hidden");
+  els.overviewToggle.setAttribute("aria-expanded", String(!els.overviewBody.classList.contains("hidden")));
+  saveUiState();
+});
+els.jumpButton.addEventListener("click", jumpToQuestion);
+els.questionJump.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    jumpToQuestion();
+  }
+});
 els.favoriteButton.addEventListener("click", toggleFavorite);
 els.resetProgress.addEventListener("click", () => {
   if (!confirm("确定清空所有答题记录吗？")) return;
-  state.progress = { answers: {}, favorites: {} };
+  state.progress = defaultProgress();
   saveProgress();
   applyFilters();
 });
