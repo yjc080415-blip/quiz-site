@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>手机刷题</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">题库练习</p>
+        <h1>手机刷题</h1>
+      </div>
+      <button id="resetProgress" class="ghost-button" type="button">清空记录</button>
+    </header>
+
+    <section class="panel controls" aria-label="筛选条件">
+      <label>
+        <span>章节</span>
+        <select id="chapterFilter"></select>
+      </label>
+      <label>
+        <span>题型</span>
+        <select id="typeFilter"></select>
+      </label>
+      <label>
+        <span>模式</span>
+        <select id="modeFilter">
+          <option value="all">全部题目</option>
+          <option value="wrong">只看错题</option>
+          <option value="favorite">收藏题目</option>
+          <option value="unanswered">未做题目</option>
+        </select>
+      </label>
+      <label class="switch-row">
+        <input id="shuffleToggle" type="checkbox">
+        <span>随机顺序</span>
+      </label>
+    </section>
+
+    <section class="stats-grid" aria-label="练习统计">
+      <div class="stat">
+        <strong id="totalCount">0</strong>
+        <span>题目</span>
+      </div>
+      <div class="stat">
+        <strong id="doneCount">0</strong>
+        <span>已做</span>
+      </div>
+      <div class="stat">
+        <strong id="correctRate">0%</strong>
+        <span>正确率</span>
+      </div>
+    </section>
+
+    <section id="emptyState" class="panel empty hidden">
+      <h2>没有符合条件的题目</h2>
+      <p>可以切换章节、题型或练习模式后继续。</p>
+    </section>
+
+    <section id="quizCard" class="panel quiz-card">
+      <div class="card-top">
+        <div>
+          <p id="questionMeta" class="meta"></p>
+          <p id="questionProgress" class="progress-text"></p>
+        </div>
+        <button id="favoriteButton" class="icon-button" type="button" aria-label="收藏本题">☆</button>
+      </div>
+
+      <h2 id="questionText"></h2>
+      <div id="options" class="options"></div>
+
+      <div id="resultBox" class="result hidden"></div>
+
+      <div class="actions">
+        <button id="prevButton" class="secondary-button" type="button">上一题</button>
+        <button id="checkButton" class="primary-button" type="button">提交答案</button>
+        <button id="nextButton" class="secondary-button" type="button">下一题</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
