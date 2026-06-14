@@ -206,7 +206,8 @@ function render() {
 }
 
 function getQuestionStatus(question) {
-  return state.progress.answers[question.id]?.status || "unanswered";
+  const status = state.progress.answers[question.id]?.status;
+  return status === "correct" || status === "wrong" ? status : "unanswered";
 }
 
 function renderOverview() {
