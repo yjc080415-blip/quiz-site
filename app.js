@@ -51,6 +51,7 @@ const state = {
   currentIndex: 0,
   selected: new Set(),
   checked: false,
+  lastSubmittedRedoId: "",
   progress: loadProgress(),
 };
 
@@ -143,6 +144,7 @@ function buildFilteredQuestions() {
     const matchesMode =
       mode === "all" ||
       (mode === "wrong" && record?.status === "wrong") ||
+      (mode === "redoWrong" && record?.status === "wrong") ||
       (mode === "favorite" && state.progress.favorites[question.id]) ||
       (mode === "unanswered" && !record);
 
@@ -186,8 +188,10 @@ function render() {
 
   const question = state.filtered[state.currentIndex];
   const record = state.progress.answers[question.id];
-  state.selected = new Set(record?.selected || []);
-  state.checked = Boolean(record);
+  const isRedoingWrong = els.modeFilter.value === "redoWrong" && record?.status === "wrong";
+  const showRedoResult = isRedoingWrong && state.lastSubmittedRedoId === question.id;
+  state.selected = new Set(isRedoingWrong && !showRedoResult ? [] : record?.selected || []);
+  state.checked = isRedoingWrong ? showRedoResult : Boolean(record);
 
   els.questionMeta.textContent = `${normalizeChapter(question.chapter)} · ${question.type}${question.difficulty ? ` · ${question.difficulty}` : ""}`;
   els.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.filtered.length} 题`;
@@ -199,8 +203,13 @@ function render() {
 
   els.prevButton.disabled = state.currentIndex === 0;
   els.nextButton.disabled = state.currentIndex === state.filtered.length - 1;
-  els.checkButton.textContent = state.checked ? "已提交" : "提交答案";
-  els.checkButton.disabled = state.checked;
+  if (isRedoingWrong && showRedoResult && record.status === "wrong") {
+    els.checkButton.textContent = "再做一次";
+    els.checkButton.disabled = false;
+  } else {
+    els.checkButton.textContent = state.checked ? "已提交" : "提交答案";
+    els.checkButton.disabled = state.checked;
+  }
   els.questionJump.max = state.filtered.length;
   els.questionJump.value = state.currentIndex + 1;
 }
@@ -253,6 +262,8 @@ function renderKeepingAnchor(anchor) {
 function renderOptions(question) {
   const correct = new Set(question.answer.split(""));
   const record = state.progress.answers[question.id];
+  const isRedoingWrong = els.modeFilter.value === "redoWrong" && record?.status === "wrong";
+  const showStoredResult = record && (!isRedoingWrong || state.lastSubmittedRedoId === question.id);
 
   els.options.innerHTML = "";
   question.options.forEach((option) => {
@@ -273,10 +284,10 @@ function renderOptions(question) {
     if (state.selected.has(option.letter)) {
       button.classList.add("selected");
     }
-    if (record && correct.has(option.letter)) {
+    if (showStoredResult && correct.has(option.letter)) {
       button.classList.add("correct");
     }
-    if (record?.status === "wrong" && state.selected.has(option.letter) && !correct.has(option.letter)) {
+    if (showStoredResult && record.status === "wrong" && state.selected.has(option.letter) && !correct.has(option.letter)) {
       button.classList.add("wrong");
     }
 
@@ -303,6 +314,20 @@ function selectOption(question, letter) {
 
 function checkAnswer() {
   const question = state.filtered[state.currentIndex];
+  const record = state.progress.answers[question?.id];
+  const isRetryingRedoQuestion =
+    els.modeFilter.value === "redoWrong" &&
+    record?.status === "wrong" &&
+    state.lastSubmittedRedoId === question?.id &&
+    state.checked;
+
+  if (isRetryingRedoQuestion) {
+    state.lastSubmittedRedoId = "";
+    state.selected = new Set();
+    renderKeepingAnchor(els.checkButton);
+    return;
+  }
+
   if (!question || !state.selected.size) {
     els.resultBox.className = "result bad";
     els.resultBox.textContent = "请先选择答案。";
@@ -311,14 +336,25 @@ function checkAnswer() {
   }
 
   const correct = sameAnswer(state.selected, question.answer);
+  const isRedoWrongMode = els.modeFilter.value === "redoWrong";
   state.progress.answers[question.id] = {
     selected: [...state.selected],
     status: correct ? "correct" : "wrong",
     answeredAt: Date.now(),
   };
+  state.lastSubmittedRedoId = isRedoWrongMode ? question.id : "";
   saveProgress();
 
-  if (els.modeFilter.value !== "all") {
+  if (isRedoWrongMode && correct) {
+    state.filtered = buildFilteredQuestions();
+    state.currentIndex = Math.min(state.currentIndex, Math.max(state.filtered.length - 1, 0));
+    state.lastSubmittedRedoId = "";
+    saveUiState();
+    renderKeepingAnchor(els.checkButton);
+    return;
+  }
+
+  if (els.modeFilter.value !== "all" && els.modeFilter.value !== "redoWrong") {
     state.filtered = buildFilteredQuestions();
     state.currentIndex = Math.min(state.currentIndex, Math.max(state.filtered.length - 1, 0));
     saveUiState();
@@ -332,7 +368,8 @@ function checkAnswer() {
 
 function renderResult(question) {
   const record = state.progress.answers[question.id];
-  if (!record) {
+  const isRedoingWrong = els.modeFilter.value === "redoWrong" && record?.status === "wrong";
+  if (!record || (isRedoingWrong && state.lastSubmittedRedoId !== question.id)) {
     els.resultBox.className = "result hidden";
     els.resultBox.textContent = "";
     return;
